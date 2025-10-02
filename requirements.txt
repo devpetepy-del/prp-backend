@@ -12,3 +12,4 @@ psycopg2-binary
 pydantic-extra-types
 argon2-cffi
 asyncpg
+pillow
