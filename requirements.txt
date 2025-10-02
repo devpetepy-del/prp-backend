@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic
+sqlalchemy 
+pydantic[email] 
+passlib[argon2]==1.7.4
+python-jose
+pydantic-settings
+python-multipart 
+cloudinary
+psycopg2-binary
+pydantic-extra-types
+argon2-cffi

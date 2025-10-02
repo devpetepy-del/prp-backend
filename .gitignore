@@ -1,0 +1,6 @@
+/.env
+/debug.steps
+/depeciated
+/SECURITY.md
+/test.db
+/__pycache__
