@@ -49,13 +49,13 @@ class UserOut(UserBase):
 #     is_staff: Optional[bool] = None
 #     password: Optional[str] = Field(None, min_length=6)
 
-# class UserResponse(UserBase):
-#     id: int
-#     is_superuser: bool
-#     created_at: datetime
+class UserResponse(UserBase):
+    id: int
+    is_superuser: bool
+    created_at: datetime
 
-#     class Config:
-#         from_attributes = True
+    class Config:
+        from_attributes = True
 
 
 # --- Templates --- #

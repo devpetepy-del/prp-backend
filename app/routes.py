@@ -1,7 +1,7 @@
 # app/routes.py
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
-from . import schemas, crud, database, cloud
+from . import schemas, crud, database, cloud, models
 from core import auth
 from datetime import datetime, timezone
 import json
@@ -29,9 +29,9 @@ async def login(user: schemas.UserCreate, db: Session = Depends(database.get_db)
     token = auth.create_access_token({"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
-# @app.get("/auth/me", response_model=UserResponse)
-# async def read_users_me(current_user: User = Depends(auth.get_current_active_user)):
-#     return current_user
+@app.get("/auth/me", response_model=schemas.UserResponse)
+async def read_users_me(current_user: models.User = Depends(auth.get_current_active_user)):
+    return current_user
 
 def parse_text_elements(text_elements: str = Form(...)) -> List[schemas.TextElement]:
     try:
@@ -68,8 +68,6 @@ async def create_template(
 @router.get("/templates", response_model=List[schemas.TemplateOut])
 async def list_templates(search: Optional[str] = None, skip: int = 0, limit: int = 10, db: Session = Depends(database.get_db)):
     return await crud.list_templates(db, skip=skip, limit=limit, search=search)
-
-
 
 # @router.get("/templates/{template_id}", response_model=schemas.TemplateOut)
 # def get_template(template_id: int, db: Session = Depends(database.get_db)):
