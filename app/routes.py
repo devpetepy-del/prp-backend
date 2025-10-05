@@ -29,7 +29,7 @@ async def login(user: schemas.UserCreate, db: Session = Depends(database.get_db)
     token = auth.create_access_token({"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
-@app.get("/auth/me", response_model=schemas.UserResponse)
+@router.get("/auth/me", response_model=schemas.UserResponse)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_active_user)):
     return current_user
 
