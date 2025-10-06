@@ -87,12 +87,9 @@ async def update_template(template_id: int, payload: dict, current_user = Depend
 
 @router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_template(template_id: int, current_user = Depends(auth.get_current_active_user), db: Session = Depends(database.get_db)):
-    tmpl = crud.get_template(db, template_id)
-    if not tmpl:
-        raise HTTPException(status_code=404, detail="Template not found")
-    if tmpl.owner_id != current_user.id and not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Not permitted")
-    await crud.delete_template(db, tmpl)
+    result = await crud.delete_template(db, template_id, current_user)
+    if result.rowcount == 0:  
+        raise HTTPException(status_code=404, detail="Template not found or not permitted")
     return
 
 # --- Variants --- #

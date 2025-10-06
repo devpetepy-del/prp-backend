@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from . import models, schemas
 from core import auth
+from sqlalchemy import delete
 
 
 # --- USERS --- #
@@ -75,10 +76,19 @@ async def update_template(db: AsyncSession, template: models.Template, update_da
     return template
 
 
-async def delete_template(db: AsyncSession, template: models.Template):
-    await db.delete(template)
-    await db.commit()
-    return
+async def delete_template(db: AsyncSession, template_id, current_user):
+    stmt = (
+        delete(models.Template)
+        .where(
+            models.Template.id == template_id,
+            # ((models.Template.owner_id == current_user.id) | current_user.is_superuser)
+        )
+        .execution_options(synchronize_session="fetch")
+    )
+
+    result = await db.execute(stmt)
+    await db.commit()    
+    return result
 
 
 async def list_templates(
