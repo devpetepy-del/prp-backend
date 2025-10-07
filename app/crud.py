@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from . import models, schemas
 from core import auth
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 
 
 # --- USERS --- #
@@ -65,16 +65,18 @@ async def create_template(
         "created_at": db_t.created_at
     }
 
-
-async def update_template(db: AsyncSession, template: models.Template, update_data: dict):
-    if "text_elements" in update_data:
-        template.text_elements = update_data.pop("text_elements")
-    for k, v in update_data.items():
-        setattr(template, k, v)
+async def update_template(db: AsyncSession, template_id: int, update_data: dict, current_user=None):
+    stmt = (
+        update(models.Template)
+        .where(models.Template.id == template_id)
+        # optional owner check
+        # .where((models.Template.owner_id == current_user.id) | current_user.is_superuser)
+        .values(**update_data)
+        .execution_options(synchronize_session="fetch")
+    )
+    result = await db.execute(stmt)
     await db.commit()
-    await db.refresh(template)
-    return template
-
+    return result
 
 async def delete_template(db: AsyncSession, template_id, current_user):
     stmt = (
@@ -110,6 +112,12 @@ async def list_templates(
     result = await db.execute(stmt.offset(skip).limit(limit))
     return result.scalars().all()
 
+async def get_template(db: AsyncSession, template_id: int):
+     # fetch updated row if you need to return it
+    result = await db.execute(
+        select(models.Template).where(models.Template.id == template_id)
+    )
+    return result.scalar_one_or_none()
 
 # --- VARIANTS --- #
 async def create_variant(

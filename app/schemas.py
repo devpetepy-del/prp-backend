@@ -11,13 +11,20 @@ from datetime import datetime
 
 # Text element schema (not a DB model)
 class TextElement(BaseModel):
-    id: Optional[int] = None # unnessesary since its no being auto gen
+    id: Optional[float] = None # unnessesary since its no being auto gen
     text: str
     x: float
     y: float
-    font_size: int = Field(default=14, ge=8, le=72)
-    font_color: str = Field(default="#000000")
+    font_size: int = Field(default=14, ge=8, le=101)
+    color: str = Field(default="#000000")
     rotation: float = Field(default=0.0, ge=-180, le=180)
+    font_family: str = "Arial"
+    outline_color: str = Field(default="#000000")
+    outline_size: int = Field(default=1, ge=-1, le=31)
+
+# export interface TextElement {
+#   id: string;
+
 
 # --- Users --- #
 class UserBase(BaseModel):

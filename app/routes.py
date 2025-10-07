@@ -36,6 +36,8 @@ async def read_users_me(current_user: models.User = Depends(auth.get_current_act
 def parse_text_elements(text_elements: str = Form(...)) -> List[schemas.TextElement]:
     try:
         parsed = json.loads(text_elements)
+        for i in parsed:
+            i["id"] = float(i["id"])
         return [schemas.TextElement(**t) for t in parsed]
     except (ValueError, ValidationError) as e:
         raise HTTPException(status_code=400, detail=f"Invalid text_elements JSON: {e}")
@@ -76,21 +78,67 @@ async def list_templates(search: Optional[str] = None, skip: int = 0, limit: int
 #         raise HTTPException(status_code=404, detail="Template not found")
 #     return tmpl
 
-@router.put("/templates/{template_id}", response_model=schemas.TemplateOut)
-async def update_template(template_id: int, payload: dict, current_user = Depends(auth.get_current_active_user), db: Session = Depends(database.get_db)):
-    tmpl = crud.get_template(db, template_id)
-    if not tmpl:
-        raise HTTPException(status_code=404, detail="Template not found")
-    if tmpl.owner_id != current_user.id and not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Not permitted")
-    return await crud.update_template(db, tmpl, payload)
+@router.put("/templates/{template_id}",  status_code=status.HTTP_206_PARTIAL_CONTENT)#response_model=schemas.TemplateOut)
+async def update_template(
+    template_id: int,
+    name: Optional[str] = Form(...),
+    description: Optional[str] = Form(None),
+    tag: Optional[str] = Form(None),
+    text_elements: Optional[List[schemas.TextElement]] = Depends(parse_text_elements),
+    file2: Optional[UploadFile] = File(None),
+    thumbnail_url: str= Form(None),
+    image_url: str = Form(None),
+    current_user=Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db),
+):
+    # if new files uploaded → re-upload + replace
+    if file2:
+        image_public_id = cloud.get_public_id(image_url)
+        thumbnail_public_id = cloud.get_public_id(thumbnail_url)
+        upload_task = asyncio.create_task(cloud.update_images(image_url, image_public_id, thumbnail_public_id, file2))
+        update_data = schemas.TemplateCreate(name=name, description=description, text_elements=text_elements, tag=tag).model_dump()
+        try:
+            image_url, public_id, thumb_url, thumb_id = await upload_task
+            update_data.update(
+                dict(
+                    image_url=image_url,
+                    thumbnail_url=thumb_url,
+                    image_public_id=public_id,
+                    thumbnail_public_id=thumb_id,
+                )
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Image upload failed: {e}")
 
-@router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_template(template_id: int, current_user = Depends(auth.get_current_active_user), db: Session = Depends(database.get_db)):
-    result = await crud.delete_template(db, template_id, current_user)
-    if result.rowcount == 0:  
+    result = await crud.update_template(db, template_id, update_data, current_user)
+    if not result:  # e.g. False if no row updated
         raise HTTPException(status_code=404, detail="Template not found or not permitted")
     return
+    # # fetch updated template to return
+    # tmpl = await crud.get_template(db, template_id)
+    # return tmpl
+
+@router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_template(
+    template_id: int,
+    current_user = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db),
+):
+    # fetch template first
+    template: models.Template = await crud.get_template(db, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    # delete DB entry
+    result = await crud.delete_template(db, template_id, current_user)
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Template not found or not permitted")
+
+    # delete images (non-blocking)
+    await cloud.delete_images(template.image_public_id, template.thumbnail_public_id)
+
+    return
+
 
 # --- Variants --- #
 @router.post("/variants", response_model=schemas.VariantOut, status_code=status.HTTP_201_CREATED) # ✅
@@ -122,8 +170,6 @@ async def create_variant(
 @router.get("/templates/{template_id}/variants", response_model=List[schemas.VariantOut])
 async def list_variants(template_id: int, skip: int = 0, limit: int = 10, db: Session = Depends(database.get_db)):
     return await crud.list_variants_for_template(db, template_id, skip=skip, limit=limit)
-
-
 
 # Health check
 @router.get("/health") # ✅

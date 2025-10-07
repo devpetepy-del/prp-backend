@@ -5,6 +5,7 @@ from PIL import Image
 import io
 import asyncio
 import hashlib
+import re
 
 THUMBNAIL="thumbnail" #"templates/thumbnails"
 THUMBNAIL_SIZE=512
@@ -16,7 +17,6 @@ cloudinary.config(
     secure=True
 )
 
-# use asynic with this
 # with multiple cns we can have it be modular were we can change easily 
 # also for deleting we can just delete the whole service
 # we will be using different cns services and logging it but we will not store locally
@@ -48,8 +48,6 @@ def _process_image_sync(file_bytes, max_size=2048, to_webp=True):
 async def process_image(file_bytes, max_size=2048, to_webp=True):
     return await asyncio.to_thread(_process_image_sync, file_bytes, max_size, to_webp)
 
-# since we presign we can get faster uploads through generation of url and a webhook
-# --- FASTER: Cloudinary upload with optimizations ---
 def _upload_sync(file_bytes, folder, extension, public_id=None):
     upload_params = {
         "folder": folder,
@@ -78,11 +76,15 @@ async def upload_image(file_obj, folder: str = "templates", max_size=2048):
     res = await asyncio.to_thread(_upload_sync, buffer, folder, extension, public_id)
     return res["secure_url"], res["public_id"]
 
-def delete_image(public_id):
-    result = cloudinary.uploader.destroy(public_id)
+async def delete_images(public_id: str, thumbnail_p_id: str):
+    loop = asyncio.get_running_loop()
+    result = await asyncio.gather(
+        loop.run_in_executor(None, cloudinary.uploader.destroy, public_id),
+        loop.run_in_executor(None, cloudinary.uploader.destroy, thumbnail_p_id),
+    )
     return result
 
-def update_image(cloudinary_public_id, file, folder="templates"):
+async def update_image(cloudinary_public_id, file, folder="templates", max_size=2048):
     # Delete old image if exists
     if cloudinary_public_id:
         try:
@@ -90,7 +92,19 @@ def update_image(cloudinary_public_id, file, folder="templates"):
         except Exception as e:
             # logging.warning(f"Failed to delete old image: {str(e)}")
             print(f"Failed to delete old image: {str(e)}")
-    upload_image(file, folder)
+    return await upload_image(file, folder, max_size)
+
+async def update_images(template_url, template_public_id, thumbnail_public_id, thumbnail_file):
+    # call update_image directly since we only have one coroutine
+    thumb_url, thumb_id = await update_image(
+        thumbnail_public_id,
+        thumbnail_file,
+        folder=THUMBNAIL,
+        max_size=THUMBNAIL_SIZE
+    )
+
+    # return unpacked values
+    return template_url, template_public_id, thumb_url, thumb_id
 
 async def upload_images(template_file, thumbnail_file):
     url, thumb = await asyncio.gather(
@@ -108,3 +122,9 @@ async def upload_images(template_file, thumbnail_file):
 #             status_code=500,
 #             detail="Failed to upload image"
 #         )
+
+
+def get_public_id(url):
+    match = re.search(r"/upload/(?:v\d+/)?(.+)\.\w+$", url)
+    public_id = match.group(1) if match else None
+    return public_id
