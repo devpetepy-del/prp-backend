@@ -29,7 +29,7 @@ class TextElement(BaseModel):
 # --- Users --- #
 class UserBase(BaseModel):
     email: EmailStr
-    username: str
+    username: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str = Field(min_length=6)
