@@ -19,10 +19,19 @@ async def create_user(db: AsyncSession, user_in: schemas.UserCreate):
     return db_user
 
 
+async def get_user_by_username(db: AsyncSession, username: str):
+    result = await db.execute(select(models.User).where(models.User.username == username))
+    return result.scalar_one_or_none()
+
 async def get_user_by_email(db: AsyncSession, email: str):
     result = await db.execute(select(models.User).where(models.User.email == email))
     return result.scalar_one_or_none()
 
+async def get_user_by_email_or_username(db: AsyncSession, loginid: str):
+    result = await db.execute(select(models.User).where(
+        (models.User.email == loginid) | (models.User.username == loginid)
+    ))
+    return result.scalar_one_or_none()
 
 async def get_user_by_id(db: AsyncSession, user_id: int):
     result = await db.execute(select(models.User).where(models.User.id == user_id))

@@ -10,15 +10,34 @@ from fastapi import HTTPException, Form, status
 from typing import List, Optional
 import asyncio
 from core.scripts.analysis import start_time, calculate_time
+import random
+import string
 
 router = APIRouter()
+
+def generate_username(email: str, length: int = 4, email_length: int = 5) -> str:
+    """Generate a username from email prefix + random digits."""
+    base = email.split("@")[0][:email_length]
+    random_suffix = ''.join(random.choices(string.ascii_lowercase+string.digits, k=length))
+    return f"{base}{random_suffix}"
+
+async def generate_unique_username(db: Session, email: str, email_length: int = 5, length: int = 7) -> str:
+    """Generate a username and ensure it's unique in the database."""
+    while True:
+        username = generate_username(email, length, email_length)
+        existing = await crud.get_user_by_username(db, username)
+        if not existing:
+            return username
 
 # --- User endpoints --- #
 @router.post("/register", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
 async def register(user_in: schemas.UserCreate, db: Session = Depends(database.get_db)):
-    existing = crud.get_user_by_email(db, user_in.email)
+    print(user_in.email)
+    existing = await crud.get_user_by_email(db, user_in.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+    if not user_in.username:
+        user_in.username = await generate_unique_username(db, user_in.email)
     return await crud.create_user(db, user_in)
 
 @router.post("/login")
