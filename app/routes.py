@@ -90,12 +90,12 @@ async def create_template(
 async def list_templates(search: Optional[str] = None, skip: int = 0, limit: int = 10, db: Session = Depends(database.get_db)):
     return await crud.list_templates(db, skip=skip, limit=limit, search=search)
 
-# @router.get("/templates/{template_id}", response_model=schemas.TemplateOut)
-# def get_template(template_id: int, db: Session = Depends(database.get_db)):
-#     tmpl = crud.get_template(db, template_id)
-#     if not tmpl:
-#         raise HTTPException(status_code=404, detail="Template not found")
-#     return tmpl
+@router.get("/templates/{template_id}", response_model=schemas.TemplateOut)
+def get_template(template_id: int, db: Session = Depends(database.get_db)):
+    tmpl = crud.get_template(db, template_id)
+    if not tmpl:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return tmpl
 
 @router.put("/templates/{template_id}",  status_code=status.HTTP_206_PARTIAL_CONTENT)#response_model=schemas.TemplateOut)
 async def update_template(

@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from . import models, schemas
 from core import auth
-from sqlalchemy import delete, update
+from sqlalchemy import delete, update, desc
 
 
 # --- USERS --- #
@@ -101,7 +101,6 @@ async def delete_template(db: AsyncSession, template_id, current_user):
     await db.commit()    
     return result
 
-
 async def list_templates(
     db: AsyncSession,
     skip: int = 0,
@@ -117,6 +116,8 @@ async def list_templates(
         )
     if tag:
         stmt = stmt.where(models.Template.tag.ilike(f"%{tag}%"))
+
+    stmt = stmt.order_by(desc(models.Template.created_at))
 
     result = await db.execute(stmt.offset(skip).limit(limit))
     return result.scalars().all()
