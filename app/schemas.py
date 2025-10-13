@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Union
 from datetime import datetime
 # from pydantic_extra_types.color import Color
 
@@ -19,12 +19,25 @@ class TextElement(BaseModel):
     color: str = Field(default="#000000")
     rotation: float = Field(default=0.0, ge=-180, le=180)
     font_family: str = "Arial"
-    outline_color: str = Field(default="#000000")
-    outline_size: int = Field(default=1, ge=-1, le=31)
+    width: Optional[float] = 100
+    height: Optional[float] = 50
 
-# export interface TextElement {
-#   id: string;
+    outline_color: Optional[str] = Field(default="#000000")
+    outline_size: Optional[int] = Field(default=1, ge=-1, le=31)
 
+    text_align: Optional[str] = None
+    font_weight: Optional[Union[str, float]] = None
+    font_style: Optional[str] = None
+    underline: Optional[bool] = False
+    linethrough: Optional[bool] = False
+    effect_type: Optional[str] = None
+
+    # Shadow properties
+    shadow_color: Optional[str] = Field(default="#000000")
+    shadow_blur: Optional[float] = None
+    shadow_offsetX: Optional[float] = None
+    shadow_offsetY: Optional[float] = None
+    shadow_opacity: Optional[float] = None
 
 # --- Users --- #
 class UserBase(BaseModel):
