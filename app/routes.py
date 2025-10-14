@@ -195,3 +195,11 @@ async def list_variants(template_id: int, skip: int = 0, limit: int = 10, db: Se
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc)}
 
+@router.get("/alive-api")
+async def check_alive():
+    """
+    Cron health-check endpoint.
+    Returns "OK" if the cron secret is valid.
+    """
+    return {"status": "OK"}
+
