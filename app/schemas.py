@@ -35,8 +35,8 @@ class TextElement(BaseModel):
     # Shadow properties
     shadow_color: Optional[str] = Field(default="#000000")
     shadow_blur: Optional[float] = None
-    shadow_offsetX: Optional[float] = None
-    shadow_offsetY: Optional[float] = None
+    shadow_offset_x: Optional[float] = None
+    shadow_offset_y: Optional[float] = None
     shadow_opacity: Optional[float] = None
 
 # --- Users --- #
