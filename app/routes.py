@@ -97,7 +97,47 @@ def get_template(template_id: int, db: Session = Depends(database.get_db)):
         raise HTTPException(status_code=404, detail="Template not found")
     return tmpl
 
-@router.put("/templates/{template_id}",  status_code=status.HTTP_206_PARTIAL_CONTENT)#response_model=schemas.TemplateOut)
+# @router.put("/templates/{template_id}",  status_code=status.HTTP_206_PARTIAL_CONTENT)#response_model=schemas.TemplateOut)
+# async def update_template(
+#     template_id: int,
+#     name: Optional[str] = Form(...),
+#     description: Optional[str] = Form(None),
+#     tag: Optional[str] = Form(None),
+#     text_elements: Optional[List[schemas.TextElement]] = Depends(parse_text_elements),
+#     file2: Optional[UploadFile] = File(None),
+#     thumbnail_url: str= Form(None),
+#     image_url: str = Form(None),
+#     current_user=Depends(auth.get_current_active_user),
+#     db: Session = Depends(database.get_db),
+# ):
+#     # if new files uploaded → re-upload + replace
+#     if file2:
+#         image_public_id = cloud.get_public_id(image_url)
+#         thumbnail_public_id = cloud.get_public_id(thumbnail_url)
+#         upload_task = asyncio.create_task(cloud.update_images(image_url, image_public_id, thumbnail_public_id, file2))
+#         update_data = schemas.TemplateCreate(name=name, description=description, text_elements=text_elements, tag=tag).model_dump()
+#         try:
+#             image_url, public_id, thumb_url, thumb_id = await upload_task
+#             update_data.update(
+#                 dict(
+#                     image_url=image_url,
+#                     thumbnail_url=thumb_url,
+#                     image_public_id=public_id,
+#                     thumbnail_public_id=thumb_id,
+#                 )
+#             )
+#         except Exception as e:
+#             raise HTTPException(status_code=500, detail=f"Image upload failed: {e}")
+
+#     result = await crud.update_template(db, template_id, update_data, current_user)
+#     if not result:  # e.g. False if no row updated
+#         raise HTTPException(status_code=404, detail="Template not found or not permitted")
+#     return
+#     # # fetch updated template to return
+#     # tmpl = await crud.get_template(db, template_id)
+#     # return tmpl
+
+@router.put("/templates/{template_id}", status_code=status.HTTP_206_PARTIAL_CONTENT)
 async def update_template(
     template_id: int,
     name: Optional[str] = Form(...),
@@ -105,37 +145,45 @@ async def update_template(
     tag: Optional[str] = Form(None),
     text_elements: Optional[List[schemas.TextElement]] = Depends(parse_text_elements),
     file2: Optional[UploadFile] = File(None),
-    thumbnail_url: str= Form(None),
+    thumbnail_url: str = Form(None),
     image_url: str = Form(None),
     current_user=Depends(auth.get_current_active_user),
     db: Session = Depends(database.get_db),
 ):
-    # if new files uploaded → re-upload + replace
+    # Initialize update_data with the basic fields
+    update_data = schemas.TemplateCreate(
+        name=name, 
+        description=description, 
+        text_elements=text_elements, 
+        tag=tag
+    ).model_dump()
+    
+    # If new thumbnail uploaded → update only thumbnail, keep original image
     if file2:
         image_public_id = cloud.get_public_id(image_url)
         thumbnail_public_id = cloud.get_public_id(thumbnail_url)
-        upload_task = asyncio.create_task(cloud.update_images(image_url, image_public_id, thumbnail_public_id, file2))
-        update_data = schemas.TemplateCreate(name=name, description=description, text_elements=text_elements, tag=tag).model_dump()
+        
         try:
-            image_url, public_id, thumb_url, thumb_id = await upload_task
-            update_data.update(
-                dict(
-                    image_url=image_url,
-                    thumbnail_url=thumb_url,
-                    image_public_id=public_id,
-                    thumbnail_public_id=thumb_id,
-                )
+            upload_task = asyncio.create_task(
+                cloud.update_images(image_url, image_public_id, thumbnail_public_id, file2)
             )
+            _, _, thumb_url, thumb_id = await upload_task
+            
+            # Update with new thumbnail but keep original image
+            update_data.update({
+                "image_url": image_url,  # unchanged
+                "thumbnail_url": thumb_url,  # new
+                "image_public_id": image_public_id,  # unchanged
+                "thumbnail_public_id": thumb_id,  # new
+            })
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Image upload failed: {e}")
 
     result = await crud.update_template(db, template_id, update_data, current_user)
-    if not result:  # e.g. False if no row updated
+    if not result:
         raise HTTPException(status_code=404, detail="Template not found or not permitted")
-    return
-    # # fetch updated template to return
-    # tmpl = await crud.get_template(db, template_id)
-    # return tmpl
+    
+    return {"message": "Template updated successfully"}
 
 @router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_template(

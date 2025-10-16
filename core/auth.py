@@ -10,7 +10,6 @@ from core.config import pwd_context, security, SECRET_KEY, ALGORITHM, EXPIRE_MIN
 from app import crud
 
 def hash_password(password: str) -> str:
-    print(password)
     return pwd_context.hash(password)
 
 def verify_password(plain: str, hashed: str) -> bool:
