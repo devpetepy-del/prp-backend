@@ -32,6 +32,7 @@ engine = create_async_engine(
             "application_name": "fastapi_app",
         }
     },
+    # future=True,
 )
 
 # Use async_sessionmaker (recommended over sessionmaker for async)
